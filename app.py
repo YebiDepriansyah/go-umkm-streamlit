@@ -3,8 +3,8 @@ import pandas as pd
 import requests
 
 # Load investor data
-investor_df = pd.read_csv("investor_data (2).csv")
-umkm_df = pd.read_csv("umkm_data (2).csv")
+investor_df = pd.read_csv("investor_data.csv")
+umkm_df = pd.read_csv("umkm_data.csv")
 
 st.set_page_config(page_title="Go-UMKM Dashboard", page_icon="💼", layout="wide")
 
