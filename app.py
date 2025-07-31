@@ -3,7 +3,7 @@ import pandas as pd
 import requests
 
 # Load UMKM data
-umkm_df = pd.read_csv("umkm_data (2).csv")
+umkm_df = pd.read_csv("umkm_data.csv")
 
 st.set_page_config(page_title="Go-UMKM Explorer", page_icon="🏪", layout="wide")
 
