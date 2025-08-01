@@ -2,42 +2,71 @@ import streamlit as st
 import pandas as pd
 import requests
 
-# Load UMKM data
-umkm_df = pd.read_csv("umkm_data.csv")
+# Load data UMKM (untuk Tab 2)
+@st.cache_data
+def load_umkm_data():
+    return pd.read_csv("umkm_data.csv")
 
-st.set_page_config(page_title="Go-UMKM Explorer", page_icon="🏪", layout="wide")
+umkm_df = load_umkm_data()
 
-st.title("🏪 Daftar UMKM")
-st.markdown("Pilih satu UMKM untuk melihat UMKM lain yang direkomendasikan untuknya.")
+# API Endpoint
+API_BASE_URL = "https://umkm-fastapi-heroku-496b36a59a51.herokuapp.com"
 
-# Dropdown UMKM
-umkm_names = umkm_df["nama"].tolist() if "nama" in umkm_df.columns else umkm_df["user_id"].tolist()
-selected_umkm_name = st.selectbox("Pilih UMKM", umkm_names)
-
-# Ambil user_id dari UMKM
-selected_umkm = umkm_df[umkm_df["nama"] == selected_umkm_name].iloc[0] if "nama" in umkm_df.columns else umkm_df[umkm_df["user_id"] == selected_umkm_name].iloc[0]
-umkm_user_id = selected_umkm["user_id"]
-
-# Tombol untuk tampilkan rekomendasi
-if st.button("🎯 Tampilkan UMKM Rekomendasi"):
-    with st.spinner("Mengambil rekomendasi..."):
-        url = f"https://umkm-fastapi-heroku-496b36a59a51.herokuapp.com/recommend/{umkm_user_id}?k=5"
+# Fungsi untuk ambil rekomendasi dari API
+def get_recommendations(user_id, k=5):
+    try:
+        url = f"{API_BASE_URL}/recommend/{user_id}?k={k}"
         res = requests.get(url)
-
         if res.status_code == 200:
-            data = res.json()
-            st.subheader("📌 UMKM Rekomendasi:")
-            for i, rec in enumerate(data["recommendations"], 1):
-                umkm_detail = umkm_df[umkm_df["user_id"] == rec["user_id"]].iloc[0] if "user_id" in umkm_df.columns else {}
-                st.markdown(f"### {i}. {rec['kategori']} ({rec['model_bisnis']})")
-                st.write(f"- Nama UMKM: {umkm_detail.get('nama', '-')}")
-                st.write(f"- Skala: {rec['skala']}")
-                st.write(f"- Jangkauan: {rec['jangkauan']}")
-                st.write(f"- Similarity Score: `{rec['similarity_score']:.3f}`")
-                st.markdown("---")
+            return res.json().get("recommendations", [])
         else:
-            st.error("Gagal mendapatkan rekomendasi.")
+            return f"❌ Error {res.status_code}: {res.text}"
+    except Exception as e:
+        return f"⚠️ Exception: {e}"
 
-# Tampilan tabel UMKM lengkap di bawah
-st.subheader("📋 Semua Data UMKM")
-st.dataframe(umkm_df)
+# UI
+st.set_page_config(page_title="Go-UMKM Recommendation", layout="wide")
+st.title("📊 Go-UMKM Recommendation App")
+
+tab1, tab2 = st.tabs(["🔍 Rekomendasi Berdasarkan ID", "📋 Pilih UMKM dari Daftar"])
+
+# Tab 1
+with tab1:
+    st.subheader("Masukkan ID UMKM untuk melihat rekomendasi")
+    user_id_input = st.text_input("🆔 Masukkan ID UMKM (UUID format)")
+    top_k = st.slider("Jumlah Rekomendasi", min_value=1, max_value=10, value=5)
+
+    if st.button("Lihat Rekomendasi", type="primary"):
+        if user_id_input:
+            rekomendasi = get_recommendations(user_id_input, top_k)
+            if isinstance(rekomendasi, str):
+                st.error(rekomendasi)
+            elif rekomendasi:
+                st.success(f"{len(rekomendasi)} Rekomendasi ditemukan:")
+                st.dataframe(pd.DataFrame(rekomendasi))
+            else:
+                st.warning("Tidak ada rekomendasi ditemukan.")
+        else:
+            st.warning("Silakan masukkan user ID terlebih dahulu.")
+
+# Tab 2
+with tab2:
+    st.subheader("Pilih UMKM dari daftar")
+
+    selected_umkm = st.selectbox(
+        "🔽 Pilih UMKM", 
+        options=umkm_df["user_id"].tolist(),
+        format_func=lambda x: f"{x} | {umkm_df.loc[umkm_df['user_id'] == x, 'kategori'].values[0]}"
+    )
+
+    top_k2 = st.slider("Jumlah Rekomendasi", min_value=1, max_value=10, value=5, key="slider2")
+
+    if st.button("Tampilkan Rekomendasi untuk UMKM Terpilih", key="btn2"):
+        rekomendasi2 = get_recommendations(selected_umkm, top_k2)
+        if isinstance(rekomendasi2, str):
+            st.error(rekomendasi2)
+        elif rekomendasi2:
+            st.success(f"{len(rekomendasi2)} Rekomendasi ditemukan:")
+            st.dataframe(pd.DataFrame(rekomendasi2))
+        else:
+            st.warning("Tidak ada rekomendasi ditemukan.")
