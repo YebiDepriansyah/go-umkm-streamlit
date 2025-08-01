@@ -59,6 +59,8 @@ with tab2:
         format_func=lambda x: f"{x} | {umkm_df.loc[umkm_df['user_id'] == x, 'kategori'].values[0]}"
     )
 
+top_k2 = st.slider("Jumlah Rekomendasi", min_value=1, max_value=10, value=5, key="slider2")
+
     if st.button("Tampilkan Rekomendasi untuk UMKM Terpilih", key="btn2"):
         rekomendasi2 = get_recommendations(selected_umkm, top_k2)
         if isinstance(rekomendasi2, str):
